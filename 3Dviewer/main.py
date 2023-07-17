@@ -22,26 +22,33 @@ class Main(QMainWindow):
         self.center_lines(self.volume_array)
         arr = np.flipud(self.volume_array[35, :, :])
         arr = np.rot90(arr, 3)
-        self.ax_image.setImage(arr, autoLevels = True)
+        self.ax_image.setImage(arr, autoLevels=True)
         arr2 = np.flipud(self.volume_array[:, 128, :])
         arr2 = np.rot90(arr2, 3)
-        self.cor_image.setImage(arr2, autoLevels = True)
+        self.cor_image.setImage(arr2, autoLevels=True)
         arr3 = np.flipud(self.volume_array[:, :, 128])
         arr3 = np.rot90(arr3, 3)
-        self.sag_image.setImage(arr3, autoLevels = True)
+        self.sag_image.setImage(arr3, autoLevels=True)
 
-        self.ax_vline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"a", self.spinBox.value()))
-        self.ax_hline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"a", self.spinBox.value()))
-        self.ax_oline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"a", self.spinBox.value()))
+        self.ax_vline.sigPositionChanged.connect(
+            lambda: self.update_image(self.volume_array, "a", self.spinBox.value()))
+        self.ax_hline.sigPositionChanged.connect(
+            lambda: self.update_image(self.volume_array, "a", self.spinBox.value()))
+        self.ax_oline.sigPositionChanged.connect(
+            lambda: self.update_image(self.volume_array, "a", self.spinBox.value()))
 
-        self.sag_vline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"s"))
-        self.sag_hline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"s"))
+        self.sag_vline.sigPositionChanged.connect(
+            lambda: self.update_image(self.volume_array, "s"))
+        self.sag_hline.sigPositionChanged.connect(
+            lambda: self.update_image(self.volume_array, "s"))
 
-        self.cor_vline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"c"))
-        self.cor_hline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"c"))
+        self.cor_vline.sigPositionChanged.connect(
+            lambda: self.update_image(self.volume_array, "c"))
+        self.cor_hline.sigPositionChanged.connect(
+            lambda: self.update_image(self.volume_array, "c"))
 
-        self.ob_hline.sigPositionChanged.connect(lambda: self.update_image(self.volume_array,"o"))
-        self.spinBox.valueChanged.connect(lambda: self.update_image(self.volume_array,"a", self.spinBox.value()))
+        self.spinBox.valueChanged.connect(lambda: self.update_image(
+            self.volume_array, "a", self.spinBox.value()))
 
     def importer(self, path):
         # reader = sitk.ImageSeriesReader()
@@ -63,7 +70,7 @@ class Main(QMainWindow):
         self.cor_vline.setValue(arr.shape[2] // 2)
         self.cor_hline.setValue(arr.shape[0] // 2)
 
-    def update_image(self, arr = None, axes = None, angle = 45):
+    def update_image(self, arr=None, axes=None, angle=45):
         if arr is None:
             print("No array passed to update_image")
             return
@@ -79,80 +86,26 @@ class Main(QMainWindow):
             self.ax_oline.setAngle(angle)
             view = np.flipud(arr)
             view = np.rot90(view, 3)
-            if angle != 0 and angle != 180:
-                self.ob_image.setImage(self.get_ob_slice(view, angle, self.ax_oline.value()))
-        
+
         elif axes == 'c':
             self.ax_vline.setValue(self.cor_vline.value())
             self.sag_hline.setValue(self.cor_hline.value())
-            self.ob_hline.setValue(self.cor_hline.value())
             view1 = np.flipud(arr[int(self.cor_hline.value()), :, :])
             view1 = np.rot90(view1, 3)
             view2 = np.flipud(arr[:, :, int(self.cor_vline.value())])
             view2 = np.rot90(view2, 3)
             self.ax_image.setImage(view1)
             self.sag_image.setImage(view2)
-        
+
         elif axes == 's':
             self.ax_hline.setValue(self.sag_vline.value())
             self.cor_hline.setValue(self.sag_hline.value())
-            self.ob_hline.setValue(self.sag_hline.value())
             view1 = np.flipud(arr[int(self.sag_hline.value()), :, :])
             view1 = np.rot90(view1, 3)
             view2 = np.flipud(arr[:, int(self.sag_vline.value()), :])
             view2 = np.rot90(view2, 3)
             self.ax_image.setImage(view1)
             self.cor_image.setImage(view2)
-
-        elif axes == 'o':
-            self.cor_hline.setValue(self.ob_hline.value())
-            self.sag_hline.setValue(self.ob_hline.value())
-            view1 = np.flipud(arr[int(self.ob_hline.value()), :, :])
-            view1 = np.rot90(view1, 3)
-            self.ax_image.setImage(view1)
-
-    def get_ob_slice(self, arr, angle, point):
-            angle = angle * np.pi / 180
-            slope = np.tan(angle)
-
-            if type(point) == list:
-                y = point[1]
-                z = point[0]
-            elif angle - np.pi/2 < 0.01:
-                y = 0
-                z = point
-            elif angle == np.pi:
-                y = point
-                z = 0
-                
-            y0 = y - slope * z
-            z0 = z - y / slope
-            zb = (arr.shape[1] - y0) / slope
-
-            if zb >= arr.shape[2]:
-                zb = arr.shape[2] - 1
-            elif zb < 0:
-                zb = 0
-                
-            if z0 >= arr.shape[2]:
-                z0 = arr.shape[2] - 1
-            elif z0 < 0:
-                z0 = 0
-
-            z_coords = np.linspace(int(z0), int(zb) - 1, arr.shape[2])
-            y_coords = z_coords * slope + y0
-            
-            for i in range(len(y_coords)):
-                y = int(round(y_coords[i]))
-                if y < 0 or y>= arr.shape[1]:
-                    y_coords[i] = 0
-
-            z_coords = np.round(z_coords)
-
-            plane = arr[:, y_coords.astype(int), z_coords.astype(int)]
-            plane = np.squeeze(plane)
-            
-            return plane
 
 
 if __name__ == '__main__':
